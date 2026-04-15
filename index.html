@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maxie Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #050505;
+      --panel-bg: #0a0a0a;
+      --border-color: #1e1e24;
+      --neon-blue: #00f0ff;
+      --text-main: #f0f0f0;
+      --text-dim: #888888;
+      --font-stack: 'Inter', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-stack);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border-color);
+      background: #080808;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--neon-blue);
+    }
+
+    .header-center {
+      color: #aeaeae;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-settings {
+      background: transparent;
+      border: 1px solid #333;
+      color: #ddd;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .btn-disconnect {
+      background: #d94040;
+      border: none;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .main-area {
+      display: flex;
+      flex: 1;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .panel:last-child {
+      border-right: none;
+    }
+
+    .panel-header {
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      text-align: center;
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    .col-audio {
+      flex: 2;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .audio-viz {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .visualizer-bars {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 80px;
+      opacity: 0.8;
+    }
+
+    .v-bar {
+      width: 14px;
+      border-radius: 20px;
+      background: var(--neon-blue);
+      transform-origin: center;
+      transition: height 0.1s;
+      animation: none;
+    }
+
+    .v-bar.active {
+      animation: barPulse 1s ease-in-out infinite;
+    }
+
+    .v-bar.active:nth-child(1) {
+      animation-delay: 0.0s;
+    }
+
+    .v-bar.active:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .v-bar.active:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    .v-bar.active:nth-child(4) {
+      animation-delay: 0.1s;
+    }
+
+    .v-bar.active:nth-child(5) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes barPulse {
+
+      0%,
+      100% {
+        height: 16px;
+      }
+
+      50% {
+        height: 60px;
+        box-shadow: 0 0 10px var(--neon-blue);
+      }
+    }
+
+    .mini-v-bar {
+      width: 6px;
+      border-radius: 20px;
+      background: var(--neon-blue);
+      transition: height 0.1s;
+      height: 4px;
+    }
+
+    .mini-v-bar.active {
+      animation: miniBarPulse 1s ease-in-out infinite;
+    }
+
+    .mini-v-bar.active:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+
+    .mini-v-bar.active:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+
+    .mini-v-bar.active:nth-child(3) {
+      animation-delay: 0.0s;
+    }
+
+    .mini-v-bar.active:nth-child(4) {
+      animation-delay: 0.4s;
+    }
+
+    .mini-v-bar.active:nth-child(5) {
+      animation-delay: 0.2s;
+    }
+
+    @keyframes miniBarPulse {
+
+      0%,
+      100% {
+        height: 4px;
+      }
+
+      50% {
+        height: 24px;
+        box-shadow: 0 0 6px var(--neon-blue);
+      }
+    }
+
+    .col-chat {
+      flex: 1.5;
+      position: relative;
+      background: #080808;
+    }
+
+    .chat-box {
+      padding: 20px;
+      overflow-y: auto;
+      height: calc(100% - 60px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .chat-box::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chat-box::-webkit-scrollbar-thumb {
+      background: #222;
+      border-radius: 4px;
+    }
+
+    .msg-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .msg-content {
+      font-weight: 400;
+    }
+
+    .msg-user {
+      align-items: flex-end;
+    }
+
+    .msg-user .msg-content {
+      color: var(--text-main);
+      text-align: right;
+    }
+
+    .msg-maxie {
+      align-items: flex-start;
+    }
+
+    .msg-maxie .msg-content {
+      color: var(--neon-blue);
+      text-shadow: 0 0 1px rgba(0, 240, 255, 0.4);
+    }
+
+    .chat-input-area {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-color);
+      background: #080808;
+    }
+
+    .mock-input {
+      background: #111;
+      border: 1px solid #222;
+      padding: 8px 12px;
+      border-radius: 4px;
+      color: var(--text-dim);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .col-details {
+      flex: 1;
+      padding-top: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .col-details::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .col-details::-webkit-scrollbar-thumb {
+      background: #222;
+      border-radius: 4px;
+    }
+
+    .info-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .info-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .status-floating {
+      display: flex;
+      align-items: center;
+      background: #080808;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+      font-size: 11px;
+      color: var(--neon-blue);
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 6px -1px rgba(0, 240, 255, 0.05);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .status-dot.active {
+      background: var(--neon-blue);
+      box-shadow: 0 0 8px var(--neon-blue);
+      animation: pulseDot 1.5s infinite;
+    }
+
+    @keyframes pulseDot {
+      0% {
+        box-shadow: 0 0 4px var(--neon-blue);
+      }
+
+      50% {
+        box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+      }
+
+      100% {
+        box-shadow: 0 0 4px var(--neon-blue);
+      }
+    }
+
+    .mini-viz {
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: #0c0c0e;
+      border: 1px solid #1a1a20;
+      border-radius: 6px;
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding-left: 8px;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 12px;
+      position: relative;
+      padding-bottom: 16px;
+      transition: 0.3s;
+    }
+
+    .timeline-item:last-child {
+      padding-bottom: 0;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 12px;
+      bottom: 0;
+      width: 1px;
+      background: #222;
+    }
+
+    .timeline-item:last-child::before {
+      display: none;
+    }
+
+    .timeline-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #333;
+      z-index: 1;
+      margin-top: 3px;
+      border: 2px solid #0a0a0a;
+      transition: 0.3s;
+    }
+
+    .timeline-item.active .timeline-dot {
+      background: var(--neon-blue);
+      box-shadow: 0 0 8px var(--neon-blue);
+    }
+
+    .timeline-item.done .timeline-dot {
+      background: #2ecc71;
+      box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
+    }
+
+    .timeline-item.error .timeline-dot {
+      background: #e74c3c;
+      box-shadow: 0 0 6px rgba(231, 76, 60, 0.5);
+    }
+
+    .timeline-content {
+      font-size: 11px;
+      color: var(--text-dim);
+      transition: 0.3s;
+    }
+
+    .timeline-item.active .timeline-content {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .log-box {
+      background: #060606;
+      border: 1px solid #1a1a1a;
+      border-radius: 4px;
+      flex: 1;
+      overflow-y: auto;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 9.5px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-height: 150px;
+    }
+
+    .log-box::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .log-box::-webkit-scrollbar-thumb {
+      background: #333;
+    }
+
+    .log-info {
+      color: #3498db;
+    }
+
+    .log-success {
+      color: #2ecc71;
+    }
+
+    .log-error {
+      color: #e74c3c;
+    }
+
+    .log-process {
+      color: #9b59b6;
+      text-shadow: 0 0 2px rgba(155, 89, 182, 0.4);
+    }
+
+    .log-default {
+      color: #888;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      </svg>
+    </div>
+    <div class="header-center">Maxie AI Dashboard</div>
+    <div class="header-right">
+      <button class="btn-settings">Settings</button>
+      <button class="btn-disconnect">Disconnect</button>
+    </div>
+  </div>
+
+  <div class="main-area">
+
+    <div class="panel col-audio">
+      <div class="panel-header">Agent Audio</div>
+      <div class="audio-viz">
+        <div class="visualizer-bars" id="audioBars">
+          <div class="v-bar" style="height: 16px;"></div>
+          <div class="v-bar" style="height: 24px;"></div>
+          <div class="v-bar" style="height: 32px;"></div>
+          <div class="v-bar" style="height: 24px;"></div>
+          <div class="v-bar" style="height: 16px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel col-chat">
+      <div class="panel-header">Chat Stream</div>
+      <div class="chat-box" id="chat">
+      </div>
+      <div class="chat-input-area">
+        <div class="mock-input">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span id="transcriptionStatus">Listening...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Futuristic AI Dashboard Right Panel -->
+    <div class="panel col-details">
+
+      <!-- AI Status Floating Header -->
+      <div class="status-floating">
+        <span class="status-dot active" id="statDot"></span>
+        <span id="statText" style="text-transform: uppercase;">LISTENING</span>
+        <span style="font-size: 10px; color: var(--text-dim); margin-left: auto;">RT: <span id="responseTime"
+            style="color:var(--text-main);">0.0s</span></span>
+      </div>
+
+      <!-- 1. Mini Visualizer -->
+      <div class="info-section">
+        <div class="info-title">VOICE ACTIVITY</div>
+        <div class="mini-viz" id="miniViz">
+          <div class="mini-v-bar"></div>
+          <div class="mini-v-bar"></div>
+          <div class="mini-v-bar"></div>
+          <div class="mini-v-bar"></div>
+          <div class="mini-v-bar"></div>
+        </div>
+      </div>
+
+      <!-- 2. Activity Timeline -->
+      <div class="info-section">
+        <div class="info-title">ACTIVITY TIMELINE</div>
+        <div class="timeline" id="activityTimeline">
+          <div class="timeline-item active" id="tl-listen">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">Awaiting Input</div>
+          </div>
+          <div class="timeline-item" id="tl-process">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">Processing Logic</div>
+          </div>
+          <div class="timeline-item" id="tl-speak">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">Generating Response</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. System Logs -->
+      <div class="info-section" style="border-bottom:none; flex:1; display:flex; flex-direction:column;">
+        <div class="info-title">SYSTEM LOGS</div>
+        <div class="log-box" id="sysLogs">
+          <div class="log-info">[INFO] Maxie initialized</div>
+          <div class="log-success">[READY] Secure connection established</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let shownCount = 0;
+    let tStart = Date.now();
+    let rTimer = null;
+
+    function createMessageBlock(msg) {
+      const isUser = (msg.sender === 'You');
+      const block = document.createElement('div');
+      block.className = 'msg-block ' + (isUser ? 'msg-user' : 'msg-maxie');
+      const content = document.createElement('div');
+      content.className = 'msg-content';
+      content.textContent = msg.text;
+      block.appendChild(content);
+      return block;
+    }
+
+    function updateVisualizer(status) {
+      const isAudible = (status === 'speaking' || status === 'listening');
+      const bars = document.getElementById('audioBars');
+      const miniViz = document.getElementById('miniViz');
+
+      if (isAudible) {
+        Array.from(bars.children).forEach(bar => bar.classList.add('active'));
+        Array.from(miniViz.children).forEach(bar => bar.classList.add('active'));
+      } else {
+        Array.from(bars.children).forEach(bar => bar.classList.remove('active'));
+        Array.from(miniViz.children).forEach(bar => bar.classList.remove('active'));
+      }
+    }
+
+    function updateTimeline(s) {
+      const tll = document.getElementById('tl-listen');
+      const tlp = document.getElementById('tl-process');
+      const tls = document.getElementById('tl-speak');
+
+      tll.className = 'timeline-item';
+      tlp.className = 'timeline-item';
+      tls.className = 'timeline-item';
+
+      if (s === 'LISTENING' || s === 'AWAKE' || s === 'SLEEPING') {
+        tll.classList.add('active');
+        tll.querySelector('.timeline-content').textContent = (s === 'SLEEPING') ? 'Sleeping. Wake me up!' : 'Awaiting Input...';
+      } else if (s === 'THINKING' || s === 'SEARCHING') {
+        tll.classList.add('done');
+        tlp.classList.add('active');
+        tlp.querySelector('.timeline-content').textContent = (s === 'SEARCHING') ? 'Searching Web API...' : 'Processing Logic...';
+      } else if (s === 'SPEAKING') {
+        tll.classList.add('done');
+        tlp.classList.add('done');
+        tls.classList.add('active');
+      }
+    }
+
+    function addLog(text, cls) {
+      const box = document.getElementById('sysLogs');
+      const div = document.createElement('div');
+      div.className = cls;
+      div.textContent = text;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    let lastStatus = '';
+
+    function fetchState() {
+      fetch('http://localhost:5000/state')
+        .then(r => r.json())
+        .then(data => {
+          const s = data.status.toUpperCase();
+
+          document.getElementById('statText').textContent = s;
+          document.getElementById('transcriptionStatus').textContent = data.transcript || 'Listening...';
+
+          if (s !== lastStatus) {
+            if (s === 'LISTENING') {
+              addLog('[AUDIO] Voice threshold active', 'log-info');
+              tStart = Date.now();
+              if (rTimer) clearInterval(rTimer);
+            }
+            if (s === 'THINKING' || s === 'SEARCHING') {
+              if (s === 'SEARCHING') {
+                addLog('[WEB] Executing Tavily network search...', 'log-info');
+              }
+              addLog('[PROCESS] Generating parameter response...', 'log-process');
+
+              // Live update of RT
+              if (rTimer) clearInterval(rTimer);
+              rTimer = setInterval(() => {
+                document.getElementById('responseTime').textContent = ((Date.now() - tStart) / 1000).toFixed(1) + 's';
+              }, 100);
+            }
+            if (s === 'SPEAKING' || s === 'AWAKE') {
+              if (rTimer) clearInterval(rTimer);
+              addLog('[SUCCESS] Audio streaming connected', 'log-success');
+            }
+            lastStatus = s;
+          }
+
+          updateTimeline(s);
+          updateVisualizer(data.status);
+
+          if (data.conversation && data.conversation.length > shownCount) {
+            const newMsgs = data.conversation.slice(shownCount);
+            shownCount = data.conversation.length;
+
+            const chatBox = document.getElementById('chat');
+            newMsgs.forEach(msg => {
+              chatBox.appendChild(createMessageBlock(msg));
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }
+        })
+        .catch(() => { });
+    }
+
+    // Refresh instantly
+    setInterval(fetchState, 150);
+  </script>
+</body>
+
+</html>
