@@ -13,13 +13,14 @@ import pyttsx3
 import threading
 import subprocess
 from groq import Groq
+import config
 
 app = Flask(__name__)
 CORS(app)
 
-client = Groq(api_key="gorl_api")
-SEARCH_API_KEY = "search_api"
-ELEVENLABS_KEY = "eleven_labs_key"
+client = Groq(api_key=config.GROQ_API_KEY)
+SEARCH_API_KEY = config.SEARCH_API_KEY
+ELEVENLABS_KEY = config.ELEVENLABS_KEY
 # The previous Voice from the library requires a paid subscription. We use "Bella" instead, a default female voice available to free accounts.
 ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"  
 MEMORY_FILE = "memory.json"
@@ -37,13 +38,18 @@ def load_memory():
     Be helpful, cool and keep answers short. Remember everything the user tells you.
     If the user says anything like goodbye or farewell, respond with a short goodbye."""}
     if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r") as f:
-            memory = json.load(f)
-        if memory[0]["role"] != "system":
-            memory.insert(0, system_message)
-        else:
-            memory[0] = system_message
-        return memory
+        try:
+            with open(MEMORY_FILE, "r") as f:
+                memory = json.load(f)
+            if not memory:
+                return [system_message]
+            if memory[0]["role"] != "system":
+                memory.insert(0, system_message)
+            else:
+                memory[0] = system_message
+            return memory
+        except Exception:
+            pass
     return [system_message]
 
 def save_memory(memory):
@@ -94,26 +100,35 @@ def speak(text):
     if not speak_elevenlabs(text):
         speak_fallback(text)
 
-def listen(silence_limit=1):
+def listen(silence_limit=1.5, timeout=5.0):
     r = sr.Recognizer()
     sample_rate = 16000
     chunk = 1024
     silent_chunks = 0
+    total_chunks = 0
     threshold = 500
     audio_chunks = []
     max_duration = 30
+    has_spoken = False
 
     with sd.InputStream(samplerate=sample_rate, channels=1, dtype='int16') as stream:
         while True:
             data, _ = stream.read(chunk)
             audio_chunks.append(data.copy())
+            total_chunks += 1
             volume = np.abs(data).mean()
             if volume < threshold:
                 silent_chunks += 1
             else:
                 silent_chunks = 0
-            if silent_chunks > int(silence_limit * sample_rate / chunk):
+                has_spoken = True
+                
+            if not has_spoken and total_chunks > int(timeout * sample_rate / chunk):
+                return ""
+                
+            if has_spoken and silent_chunks > int(silence_limit * sample_rate / chunk):
                 break
+                
             if len(audio_chunks) > int(max_duration * sample_rate / chunk):
                 break
 
@@ -193,14 +208,30 @@ def ask_maxie(question, memory):
         full_question = f"{question}\n\nReal time web info: {search_result}\n\nUse this to answer."
     else:
         full_question = question
-    memory.append({"role": "user", "content": full_question})
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=memory,
-        timeout=10
-    )
-    reply = response.choices[0].message.content
+        
+    messages = memory.copy()
+    messages.append({"role": "user", "content": full_question})
+    
+    if len(messages) > 21:
+        messages = [messages[0]] + messages[-20:]
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=messages,
+            timeout=10
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        print(f"Groq API Error: {e}")
+        reply = "Sorry, I had trouble thinking about that or connecting to my brain."
+
+    memory.append({"role": "user", "content": question})
     memory.append({"role": "assistant", "content": reply})
+    
+    if len(memory) > 31:
+        memory = [memory[0]] + memory[-30:]
+        
     save_memory(memory)
     return reply
 
@@ -215,7 +246,7 @@ def run_maxie():
         # Wake word detection
         command = ""
         while True:
-            text = listen(silence_limit=2)
+            text = listen(silence_limit=1.5, timeout=5.0)
             if text:
                 print(f"Heard: {text}")
                 
@@ -233,44 +264,48 @@ def run_maxie():
                 break
 
         state["status"] = "awake"
+        first_turn = True
         
-        if command:
-            # User spoke a command along with the wake word (eg. "Hey Maxie what's the weather")
-            user_input = command
-            state["conversation"].append({"sender": "You", "text": "hey maxie " + user_input})
-        else:
-            # User just said "Hey Maxie"
-            speak("Yes? I am here!")
-            state["status"] = "listening"
-            state["transcript"] = "Speak now..."
-            user_input = listen(silence_limit=3)
+        while True:
+            if first_turn and command:
+                user_input = command
+                state["conversation"].append({"sender": "You", "text": "hey maxie " + user_input})
+                first_turn = False
+            else:
+                if first_turn:
+                    speak("Yes? I am here!")
+                    first_turn = False
+                
+                state["status"] = "listening"
+                state["transcript"] = "Speak now..."
+                user_input = listen(silence_limit=1.5, timeout=5.0)
 
-            if not user_input:
-                speak("Going back to sleep.")
-                continue
+                if not user_input:
+                    speak("Going back to sleep.")
+                    break
 
-            print(f"You said: {user_input}")
-            state["conversation"].append({"sender": "You", "text": user_input})
+                print(f"You said: {user_input}")
+                state["conversation"].append({"sender": "You", "text": user_input})
 
-        # Process the input
-        if "power off" in user_input:
-            speak("Powering off. Goodbye!")
-            os._exit(0)
+            # Process the input
+            if "power off" in user_input:
+                speak("Powering off. Goodbye!")
+                os._exit(0)
 
-        if is_goodbye(user_input):
+            if is_goodbye(user_input):
+                reply = ask_maxie(user_input, memory)
+                speak(reply)
+                time.sleep(2)
+                break
+
+            if "open" in user_input.lower():
+                if open_app(user_input):
+                    continue
+
+            state["status"] = "thinking"
+            state["transcript"] = "Thinking..."
             reply = ask_maxie(user_input, memory)
             speak(reply)
-            time.sleep(2)
-            continue
-
-        if "open" in user_input.lower():
-            if open_app(user_input):
-                continue
-
-        state["status"] = "thinking"
-        state["transcript"] = "Thinking..."
-        reply = ask_maxie(user_input, memory)
-        speak(reply)
 
 @app.route('/state')
 def get_state():

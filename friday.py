@@ -9,10 +9,11 @@ import time
 import requests
 import pyttsx3
 from groq import Groq
+import config
 
 # Your API keys
-client = Groq(api_key="gork_api")
-SEARCH_API_KEY = "search_api"
+client = Groq(api_key=config.GROQ_API_KEY)
+SEARCH_API_KEY = config.SEARCH_API_KEY
 
 MEMORY_FILE = "memory.json"
 
@@ -23,13 +24,18 @@ def load_memory():
     IMPORTANT: If the user says anything like they are leaving, busy, will talk later, goodbye, or any farewell,
     always respond with a short goodbye like 'Okay, talk to you later!' or 'Got it, I ll be here!' and nothing else."""}
     if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r") as f:
-            memory = json.load(f)
-        if memory[0]["role"] != "system":
-            memory.insert(0, system_message)
-        else:
-            memory[0] = system_message
-        return memory
+        try:
+            with open(MEMORY_FILE, "r") as f:
+                memory = json.load(f)
+            if not memory:
+                return [system_message]
+            if memory[0]["role"] != "system":
+                memory.insert(0, system_message)
+            else:
+                memory[0] = system_message
+            return memory
+        except Exception:
+            pass
     return [system_message]
 
 def save_memory(memory):
@@ -47,28 +53,35 @@ def speak(text):
     engine.runAndWait()
     engine.stop()
 
-def listen(silence_limit=3):
+def listen(silence_limit=1.5, timeout=5.0):
     r = sr.Recognizer()
     sample_rate = 16000
     chunk = 1024
     silent_chunks = 0
+    total_chunks = 0
     threshold = 500
     audio_chunks = []
     max_duration = 30
+    has_spoken = False
 
     with sd.InputStream(samplerate=sample_rate, channels=1, dtype='int16') as stream:
         while True:
             data, _ = stream.read(chunk)
             audio_chunks.append(data.copy())
+            total_chunks += 1
 
             volume = np.abs(data).mean()
             if volume < threshold:
                 silent_chunks += 1
             else:
                 silent_chunks = 0
+                has_spoken = True
+
+            if not has_spoken and total_chunks > int(timeout * sample_rate / chunk):
+                return ""
 
             chunks_for_silence = int(silence_limit * sample_rate / chunk)
-            if silent_chunks > chunks_for_silence:
+            if has_spoken and silent_chunks > chunks_for_silence:
                 break
 
             max_chunks = int(max_duration * sample_rate / chunk)
@@ -176,15 +189,29 @@ def ask_maxie(question, memory):
     else:
         full_question = question
 
-    memory.append({"role": "user", "content": full_question})
+    messages = memory.copy()
+    messages.append({"role": "user", "content": full_question})
+    
+    if len(messages) > 21:
+        messages = [messages[0]] + messages[-20:]
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=memory
-    )
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            timeout=15
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        print(f"Groq API Error: {e}")
+        reply = "Sorry, I had trouble searching for that."
 
-    reply = response.choices[0].message.content
+    memory.append({"role": "user", "content": question})
     memory.append({"role": "assistant", "content": reply})
+    
+    if len(memory) > 31:
+        memory = [memory[0]] + memory[-30:]
+
     save_memory(memory)
 
     return reply
@@ -199,14 +226,11 @@ while True:
     no_input_count = 0
     while True:
         print("Listening... 🎤")
-        user_input = listen(silence_limit=3)
+        user_input = listen(silence_limit=1.5, timeout=5.0)
 
         if not user_input:
-            no_input_count += 1
-            if no_input_count >= 4:
-                speak("Going to sleep. Say Hey Maxie to wake me!")
-                break
-            continue
+            speak("Going to sleep. Say Hey Maxie to wake me!")
+            break
 
         print(f"You said: {user_input}")
 
